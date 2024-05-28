@@ -12,9 +12,11 @@
     "bootstrap": "^5.3.3",
     "bootstrap-vue": "^2.23.1",
     "core-js": "^3.8.3",
+    "jwt-decode": "^4.0.0",
     "vue": "^2.7.16",
     "vue-axios": "^3.5.2",
-    "vue-router": "^3.5.1"
+    "vue-router": "^2.8.1",
+    "vuex": "^2.5.0"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",

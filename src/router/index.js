@@ -1,34 +1,43 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import Home from '../views/HomeView.vue'
+import store from '../store/store';
 
 Vue.use(VueRouter)
-
-const routes = [
-  {
-    path: '/',
-    name: 'home',
-    component: HomeView
-  },
-  {
-    path: '/about',
-    name: 'about',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
-  },
-  {
-    path: '/notas',
-    name: 'notas',
-    component: () => import(/* webpackChunkName: "notas" */ '../views/NotasView.vue')
-  }
-]
 
 const router = new VueRouter({
   mode: 'history',
   base: process.env.BASE_URL,
-  routes
+  routes: [
+    {
+      path: '/',
+      name: 'home',
+      component: Home
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import(/* webpackChunkName: "login" */ '../views/LoginView.vue')
+    },
+    {
+      path: '/nota',
+      name: 'nota',
+      component: () => import(/* webpackChunkName: "nota" */ '../views/NotasView.vue'),
+      meta: { requireAuth: true }
+    }
+  ]
+});
+
+router.beforeEach((to, from, next) => {
+  const rutaProtegida = to.matched.some(record => record.meta.requireAuth);
+
+  if (rutaProtegida && store.state.token === '') {
+    next({ name: 'login' })
+
+  } else {
+    next()
+  }
+
 })
 
 export default router

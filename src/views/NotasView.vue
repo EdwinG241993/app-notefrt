@@ -1,5 +1,6 @@
 <template>
-    <div>
+    <div class="container">
+        <h1>Ruta privada!</h1>
         <table class="table">
             <thead>
                 <tr>
@@ -47,92 +48,124 @@
 </template>
 
 <script>
+import { mapState, mapActions } from "vuex";
+
 export default {
-    name: 'NotasView',
     data() {
         return {
             notas: [],
-            nota: {},
             agregar: true,
+            nota: {},
             notaEditar: {},
             mensaje: { color: 'success', texto: '' },
             dismissSecs: 5,
             dismissCountDown: 0
         };
     },
-    mounted() {
-        this.listarNotas();
+    computed: {
+        ...mapState(["token"])
     },
     methods: {
+        ...mapActions(['getTareas']),
+        countDownChanged(dismissCountDown) {
+            this.dismissCountDown = dismissCountDown
+        },
+        showAlert() {
+            this.dismissCountDown = this.dismissSecs
+        },
         listarNotas() {
-            this.axios.get('nota')
-                .then((response) => {
-                    this.notas = response.data;
-                })
-                .catch((e) => {
-                    console.log('error' + e);
-                });
-        },
-        agregarNota(item) {
-            this.axios.post('nueva-nota', item)
-                .then(response => {
-                    this.notas.unshift(response.data);
-                    this.showAlert();
-                    this.mensaje.texto = 'Notas Agregada!';
-                    this.mensaje.color = 'success';
-                })
-                .catch(e => {
-                    console.log(e.response.data.error.errors.nombre.message);
-                    this.showAlert();
-                    this.mensaje.color = 'danger';
-                    this.mensaje.texto = e.response.data.error.errors.nombre.message;
-                });
-            this.nota = {};
-        },
-        eliminarNota(id) {
-            this.axios.delete(`nota/${id}`)
-                .then(response => {
-                    let index = this.notas.findIndex(item => item._id === response.data._id);
-                    this.notas.splice(index, 1);
-                    this.showAlert();
-                    this.mensaje.texto = 'Notas Eliminada!';
-                    this.mensaje.color = 'danger';
+            let config = {
+                headers: {
+                    token: this.token
+                }
+            }
+
+            this.axios.get('/nota', config)
+                .then(res => {
+                    this.notas = res.data;
                 })
                 .catch(e => {
                     console.log(e.response);
-                });
+                })
+        },
+        agregarNota() {
+            let config = {
+                headers: {
+                    token: this.token
+                }
+            }
+            this.axios.post('/nueva-nota', this.nota, config)
+                .then(res => {
+                    this.notas.push(res.data)
+                    this.nota.nombre = '';
+                    this.nota.descripcion = '';
+                    this.mensaje.color = 'success';
+                    this.mensaje.texto = 'Nota Agregada!';
+                    this.showAlert()
+                })
+                .catch(e => {
+                    console.log(e.response);
+                    if (e.response) {
+                        // Verificar si e.response.data existe
+                        if (e.response.data && e.response.data.error && e.response.data.error.errors && e.response.data.error.errors.nombre && e.response.data.error.errors.nombre.message) {
+                            this.mensaje.texto = e.response.data.error.errors.nombre.message;
+                        } else if (e.response.data && e.response.data.mensaje) {
+                            this.mensaje.texto = e.response.data.mensaje;
+                        } else {
+                            this.mensaje.texto = 'Error de sistema';
+                        }
+                    } else {
+                        this.mensaje.texto = 'Error de red';
+                    }
+                    this.mensaje.color = 'danger';
+                    this.showAlert();
+                })
         },
         activarEdicion(id) {
             this.agregar = false;
-            this.axios.get(`buscar/?_id=${id}`)
-                .then(response => {
-                    this.notaEditar = response.data;
+            this.axios.get(`nota/${id}`)
+                .then(res => {
+                    this.notaEditar = res.data;
                 })
                 .catch(e => {
                     console.log(e.response);
-                });
+                })
         },
         editarNota(item) {
             this.axios.put(`nota/${item._id}`, item)
-                .then(response => {
-                    let index = this.notas.findIndex(itemNota => itemNota._id === item._id);
-                    this.notas.splice(index, 1, response.data);
-                    this.notaEditar = {};
+                .then(() => {
+                    let index = this.notas.findIndex(itemNota => itemNota._id === this.notaEditar._id);
+                    this.notas[index].nombre = this.notaEditar.nombre;
+                    this.notas[index].descripcion = this.notaEditar.descripcion;
+                    this.notaEditar = {}
+
                     this.showAlert();
-                    this.mensaje.texto = 'Nota Actualizada';
-                    this.mensaje.color = 'success';
+                    this.mensaje.texto = 'Nota Actualizada'
+                    this.mensaje.color = 'success'
                 })
                 .catch(e => {
                     console.log(e);
-                });
+                })
             this.agregar = true;
         },
-        countDownChanged(dismissCountDown) {
-            this.dismissCountDown = dismissCountDown;
+        eliminarNota(id) {
+            this.axios.delete(`nota/${id}`)
+                .then(res => {
+                    let index = this.notas.findIndex(item => item._id === res.data._id)
+                    this.notas.splice(index, 1);
+
+                    this.showAlert();
+                    this.mensaje.texto = 'Notas Eliminada!'
+                    this.mensaje.color = 'danger'
+                })
+                .catch(e => {
+                    console.log(e.response);
+                })
         },
-        showAlert() {
-            this.dismissCountDown = this.dismissSecs;
-        }
+    },
+    created() {
+        this.getTareas();
+        this.listarNotas();
     }
-};
+}
 </script>
