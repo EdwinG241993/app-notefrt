@@ -25,6 +25,21 @@
                 </tr>
             </tbody>
         </table>
+        <nav aria-label="Page navigation example">
+            <ul class="pagination">
+                <li class="page-item" :class="{ 'disabled': paginaActual === 1 }">
+                    <router-link class="page-link" :to="{ query: { pagina: paginaActual - 1 } }">Anterior</router-link>
+                </li>
+                <li class="page-item" :class="{ 'active': paginaActual === index + 1 }"
+                    v-for="(item, index) in cantidadPaginas" :key="index">
+                    <router-link :to="{ query: { pagina: index + 1 } }" class="page-link">{{ index + 1 }}</router-link>
+                </li>
+                <li class="page-item" :class="{ 'disabled': paginaActual === cantidadPaginas }">
+                    <router-link class="page-link" :to="{ query: { pagina: paginaActual + 1 } }">Siguiente</router-link>
+                </li>
+            </ul>
+        </nav>
+        <p>Total notas: {{ totalNotas }} - Cantidad de páginas: {{ cantidadPaginas }}</p>
         <form @submit.prevent="agregarNota(nota)" v-if="agregar">
             <h3 class="text-center">Agregar nueva Nota</h3>
             <input type="text" placeholder="Ingrese un Nombre" class="form-control my-2" v-model="nota.nombre">
@@ -53,6 +68,9 @@ import { mapState, mapActions } from "vuex";
 export default {
     data() {
         return {
+            totalNotas: 0,
+            limite: 5,
+            paginaActual: 1,
             notas: [],
             agregar: true,
             nota: {},
@@ -63,50 +81,54 @@ export default {
         };
     },
     computed: {
-        ...mapState(["token"])
+        ...mapState(["token"]),
+        cantidadPaginas() {
+            return Math.ceil(this.totalNotas / this.limite);
+        }
     },
     methods: {
         ...mapActions(['getTareas']),
         countDownChanged(dismissCountDown) {
-            this.dismissCountDown = dismissCountDown
+            this.dismissCountDown = dismissCountDown;
         },
         showAlert() {
-            this.dismissCountDown = this.dismissSecs
+            this.dismissCountDown = this.dismissSecs;
         },
-        listarNotas() {
+        paginacion(pagina) {
             let config = {
                 headers: {
                     token: this.token
                 }
-            }
-
-            this.axios.get('/nota', config)
+            };
+            let skip = (pagina - 1) * this.limite;
+            this.axios
+                .get(`/nota?skip=${skip}&limit=${this.limite}`, config)
                 .then(res => {
-                    this.notas = res.data;
+                    this.notas = res.data.notaDB;
+                    this.totalNotas = res.data.totalNotas;
                 })
                 .catch(e => {
                     console.log(e.response);
-                })
+                });
         },
         agregarNota() {
             let config = {
                 headers: {
                     token: this.token
                 }
-            }
+            };
             this.axios.post('/nueva-nota', this.nota, config)
-                .then(res => {
-                    this.notas.push(res.data)
+                .then(() => {
+                    this.paginacion(this.paginaActual); // Recargar datos
                     this.nota.nombre = '';
                     this.nota.descripcion = '';
                     this.mensaje.color = 'success';
                     this.mensaje.texto = 'Nota Agregada!';
-                    this.showAlert()
+                    this.showAlert();
                 })
                 .catch(e => {
                     console.log(e.response);
                     if (e.response) {
-                        // Verificar si e.response.data existe
                         if (e.response.data && e.response.data.error && e.response.data.error.errors && e.response.data.error.errors.nombre && e.response.data.error.errors.nombre.message) {
                             this.mensaje.texto = e.response.data.error.errors.nombre.message;
                         } else if (e.response.data && e.response.data.mensaje) {
@@ -119,7 +141,7 @@ export default {
                     }
                     this.mensaje.color = 'danger';
                     this.showAlert();
-                })
+                });
         },
         activarEdicion(id) {
             this.agregar = false;
@@ -129,43 +151,48 @@ export default {
                 })
                 .catch(e => {
                     console.log(e.response);
-                })
+                });
         },
         editarNota(item) {
             this.axios.put(`nota/${item._id}`, item)
                 .then(() => {
-                    let index = this.notas.findIndex(itemNota => itemNota._id === this.notaEditar._id);
-                    this.notas[index].nombre = this.notaEditar.nombre;
-                    this.notas[index].descripcion = this.notaEditar.descripcion;
-                    this.notaEditar = {}
-
+                    this.paginacion(this.paginaActual); // Recargar datos
+                    this.notaEditar = {};
                     this.showAlert();
-                    this.mensaje.texto = 'Nota Actualizada'
-                    this.mensaje.color = 'success'
+                    this.mensaje.texto = 'Nota Actualizada';
+                    this.mensaje.color = 'success';
                 })
                 .catch(e => {
                     console.log(e);
-                })
+                });
             this.agregar = true;
         },
         eliminarNota(id) {
             this.axios.delete(`nota/${id}`)
-                .then(res => {
-                    let index = this.notas.findIndex(item => item._id === res.data._id)
-                    this.notas.splice(index, 1);
-
+                .then(() => {
+                    this.paginacion(this.paginaActual); // Recargar datos
                     this.showAlert();
-                    this.mensaje.texto = 'Notas Eliminada!'
-                    this.mensaje.color = 'danger'
+                    this.mensaje.texto = 'Nota Eliminada!';
+                    this.mensaje.color = 'danger';
                 })
                 .catch(e => {
                     console.log(e.response);
-                })
+                });
         },
+    },
+    watch: {
+        "$route.query.pagina": {
+            immediate: true,
+            handler(pagina) {
+                pagina = parseInt(pagina) || 1;
+                this.paginacion(pagina);
+                this.paginaActual = pagina;
+            }
+        }
     },
     created() {
         this.getTareas();
-        this.listarNotas();
+        this.paginacion(this.paginaActual);
     }
 }
 </script>

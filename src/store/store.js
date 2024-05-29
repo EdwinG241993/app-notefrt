@@ -19,6 +19,9 @@ export default new Vuex.Store({
         setToken(state, token) {
             state.token = token;
         },
+        setUser(state, usuarioDB) {
+            state.usuarioDB = usuarioDB;
+        },
         obtenerUsuario(state, payload) {
             state.token = payload;
             if (payload === '') {
@@ -27,7 +30,11 @@ export default new Vuex.Store({
                 state.usuarioDB = jwtDecode(payload);
                 router.push({ name: 'nota' })
             }
-        }
+        },
+        logout(state) {
+            state.token = '';
+            state.usuarioDB = null;
+        },
     },
     actions: {
         async getTareas({ commit, state }) {
@@ -52,18 +59,24 @@ export default new Vuex.Store({
             localStorage.removeItem('token');
             router.push({ name: 'login' });
         },
-        leerToken({ commit }) {
-
+        async leerToken({ commit }) {
             const token = localStorage.getItem('token');
             if (token) {
-                commit('obtenerUsuario', token);
+                commit('setToken', token);
+                try {
+                    const response = await axios.get('/usuario', { headers: { token } });
+                    console.log(response);
+                    commit('setUser', response.data.user);
+                } catch (error) {
+                    commit('logout');
+                }
             } else {
-                commit('obtenerUsuario', '');
+                commit('logout');
             }
-
-        }
+        },
     },
     getters: {
+        nombreUsuario: state => state.usuarioDB ? state.usuarioDB.nombre : '',
         estaActivo: state => !!state.token
     }
 })

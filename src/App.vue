@@ -24,7 +24,7 @@
             <b-nav-item-dropdown right v-if="estaActivo">
               <!-- Using 'button-content' slot -->
               <template v-slot:button-content>
-                <em></em>
+                <p> {{ nombreUsuario }} </p>
               </template>
               <b-dropdown-item href="#">Profile</b-dropdown-item>
               <b-dropdown-item @click="cerrarSesion()">Sign Out</b-dropdown-item>
@@ -44,7 +44,7 @@ export default {
     ...mapActions(['cerrarSesion', 'leerToken'])
   },
   computed: {
-    ...mapGetters(['estaActivo'])
+    ...mapGetters(['estaActivo', 'nombreUsuario'])
   },
   created() {
     this.leerToken();
